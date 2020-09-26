@@ -1,0 +1,45 @@
+set interfaces lo0 unit 1 family inet address {{ ipSpoke }}/32
+set interfaces lo0 unit 1 description {{ siteName }}
+set interfaces lt-0/0/0 unit 1 peer-unit 2
+set interfaces lt-0/0/0 unit 1 family inet
+set interfaces lt-0/0/0 unit 2 peer-unit 1
+set interfaces lt-0/0/0 unit 2 family inet
+
+set security zones security-zone RPM host-inbound-traffic system-services all
+set security zones security-zone RPM host-inbound-traffic protocols all
+set security zones security-zone RPM interfaces lt-0/0/0.2
+set security zones security-zone RPM interfaces lo0.1
+
+set security policies from-zone RPM to-zone trust policy rpm-trust-icmp match source-address any
+set security policies from-zone RPM to-zone trust policy rpm-trust-icmp match destination-address any
+set security policies from-zone RPM to-zone trust policy rpm-trust-icmp match application junos-ping
+set security policies from-zone RPM to-zone trust policy rpm-trust-icmp then permit
+set security policies from-zone trust to-zone untrust policy trust-untrust-icmp match source-address any
+set security policies from-zone trust to-zone untrust policy trust-untrust-icmp match destination-address any
+set security policies from-zone trust to-zone untrust policy trust-untrust-icmp match application junos-ping
+set security policies from-zone trust to-zone untrust policy trust-untrust-icmp then permit
+
+set security zones security-zone trust interfaces lt-0/0/0.1
+
+set routing-instances RPM interface lt-0/0/0.2
+set routing-instances RPM interface lo0.1
+set routing-instances RPM instance-type virtual-router
+
+set routing-instances RPM routing-options static route 0.0.0.0/0 next-hop lt-0/0/0.2
+
+set routing-options static route {{ ipSpoke }}/32 next-hop lt-0/0/0.1
+
+set services rpm probe HubProbe test SERVER target address {{ ipHub }}
+set services rpm probe HubProbe test SERVER probe-count XX
+set services rpm probe HubProbe test SERVER probe-interval XX
+set services rpm probe HubProbe test SERVER test-interval XX
+set services rpm probe HubProbe test SERVER source-address {{ ipSpoke }}
+set services rpm probe HubProbe test SERVER routing-instance RPM
+set services rpm probe HubProbe test SERVER thresholds successive-loss XX
+set services rpm probe HubProbe test SERVER hardware-timestamp
+set services rpm probe HubProbe test SERVER traps probe-failure
+
+
+set services ip-monitoring policy test-server1 match rpm-probe HubProbe
+set services ip-monitoring policy test-server1 then preferred-route routing-instances dummy route {{ ipHub }}/32 next-hop {{ ipSpokeNH }}
+
